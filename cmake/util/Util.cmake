@@ -8,6 +8,10 @@ endmacro()
 # An option that the user can select. Can accept condition to control when option is available for user.
 # Usage:
 #   tvm_option(<option_variable> "doc string" <initial value or boolean expression> [IF <condition>])
+#
+# NOTE(brendan): Sets CACHE variable ${variable} with the value (ON/OFF) of the
+# variable named ${value} or "${value}" if not defined. Sets only if not
+# already set.
 macro(tvm_option variable description value)
   set(__value ${value})
   set(__condition "")
