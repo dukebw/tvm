@@ -90,6 +90,8 @@ with relay.build_config(opt_level=opt_level):
 # Now we can create graph runtime and run the module on Nvidia GPU.
 
 # create random input
+# TODO(brendan): question: how are the TVM shared libraries glued to Python
+# through ctypes?
 ctx = tvm.gpu()
 data = np.random.uniform(-1, 1, size=data_shape).astype("float32")
 # create module

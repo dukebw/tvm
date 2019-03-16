@@ -3,6 +3,7 @@ file(GLOB CBLAS_CONTRIB_SRC src/contrib/cblas/*.cc)
 
 if(USE_BLAS STREQUAL "openblas")
   find_library(BLAS_LIBRARY openblas)
+  include_directories(/usr/include/openblas)
   list(APPEND TVM_RUNTIME_LINKER_LIBS ${BLAS_LIBRARY})
   list(APPEND RUNTIME_SRCS ${CBLAS_CONTRIB_SRC})
   message(STATUS "Use BLAS library " ${BLAS_LIBRARY})
