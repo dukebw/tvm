@@ -213,7 +213,7 @@ def _mx_slice_axis(inputs, attrs):
     ax_end = attrs.get_str("end")
     if axis < 0:
         axis += len(shape)
-    assert axis >= 0 and axis < len(shape)
+    assert 0 <= axis < len(shape)
     if ax_end == "None":
         ax_end = int(shape[axis])
     else:
@@ -222,8 +222,8 @@ def _mx_slice_axis(inputs, attrs):
         ax_beg += int(shape[axis])
     if ax_end < 0:
         ax_end += int(shape[axis])
-    assert ax_beg >= 0 and ax_beg < int(shape[axis])
-    assert ax_end > ax_beg and ax_end <= int(shape[axis])
+    assert 0 <= ax_beg < int(shape[axis])
+    assert ax_beg < ax_end <= int(shape[axis])
     begin = []
     end = []
     for i, dim in enumerate(shape):
@@ -437,6 +437,17 @@ def _mx_roi_align(inputs, attrs):
     new_attrs["layout"] = "NCHW"
     return _op.vision.roi_align(inputs[0], inputs[1], **new_attrs)
 
+def _mx_upsampling(inputs, attrs):
+    scale_height = attrs.get_float("scale_height", None)
+    scale_width = attrs.get_float("scale_width", None)
+    height = attrs.get_int("height", 1)
+    width = attrs.get_int("width", 1)
+    if scale_height is not None:
+        height = scale_height * inputs[0].shape[2]
+    if scale_width is not None:
+        width = scale_width * inputs[0].shape[3]
+    size = (inputs[0].shape[0], inputs[0].shape[1], height, width)
+    return _op.image.resize(inputs[0], size)
 
 def _mx_roi_pooling(inputs, attrs):
     new_attrs = {}
@@ -516,11 +527,53 @@ def _mx_shape_array(inputs, attrs):
     return _op.shape_of(inputs[0], dtype='int64')
 
 
+def _mx_full(inputs, attrs):
+    assert len(inputs) == 0
+    val = attrs.get_float("value")
+    shape = attrs.get_int_tuple("shape")
+    dtype = attrs.get_str("dtype", "float32")
+    return _op.full(_expr.const(val, dtype), shape, dtype)
+
+
+def _mx_squeeze(inputs, attrs):
+    assert len(inputs) == 1
+    axis = attrs.get_int_tuple("axis", None)
+    return _op.squeeze(inputs[0], axis)
+
+
+def _mx_broadcast_axis(inputs, attrs):
+    assert len(inputs) == 1
+    axis = attrs.get_int_tuple("axis", [])
+    size = attrs.get_int_tuple("size", [])
+    assert len(axis) == len(size)
+    if len(axis) == 0:
+        return inputs[0]
+    src_shape = ir_pass.infer_type(inputs[0])._checked_type_.shape
+    tgt_shape = []
+    for i, dim in enumerate(src_shape):
+        if i not in axis:
+            tgt_shape.append(dim)
+        else:
+            assert int(dim) == 1
+            idx = axis.index(i)
+            tgt_shape.append(size[idx])
+    return _op.broadcast_to(inputs[0], tgt_shape)
+
+
+def _mx_embedding(inputs, _):
+    assert len(inputs) == 2
+    indices, weight = inputs
+    return _op.take(weight, indices.astype('int32'), axis=0)
+
+
 # Note: due to attribute conversion constraint
 # ops in the identity set must be attribute free
 _identity_list = [
     "log",
     "exp",
+    "sqrt",
+    "floor",
+    "ceil",
     "sigmoid",
     "tanh",
     "negative",
@@ -556,7 +609,6 @@ _convert_map = {
     "Flatten"                : _rename(_op.nn.batch_flatten),
     # scalar power
     "square"                 : _mx_make_power(2),
-    "sqrt"                   : _mx_make_power(1/2),
     "rsqrt"                  : _mx_make_power(-1/2),
     "cbrt"                   : _mx_make_power(1/3),
     "rcbrt"                  : _mx_make_power(-1/3),
@@ -638,14 +690,19 @@ _convert_map = {
     "batch_dot"     : _mx_batch_dot,
     "LeakyReLU"     : _mx_leaky_relu,
     "_arange"       : _mx_arange,
+    "_full"         : _mx_full,
     "repeat"        : _mx_repeat,
     "tile"          : _mx_tile,
     "reverse"       : _mx_reverse,
+    "squeeze"       : _mx_squeeze,
+    "broadcast_axis": _mx_broadcast_axis,
     "BlockGrad"     : _mx_BlockGrad,
     "shape_array"   : _mx_shape_array,
+    "Embedding"     : _mx_embedding,
     "SoftmaxOutput" : _mx_softmax_output,
     "SoftmaxActivation" : _mx_softmax_activation,
     # vision
+    "_contrib_BilinearResize2D" : _mx_upsampling,
     "_contrib_MultiBoxPrior" : _mx_multibox_prior,
     "_contrib_MultiBoxDetection" : _mx_multibox_detection,
     "_contrib_ROIAlign" : _mx_roi_align,
