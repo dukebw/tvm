@@ -14,6 +14,10 @@
 #include "runtime/registry.h"
 
 namespace tvm {
+/**
+ * NOTE(brendan): adds OpName to a global tvm::runtime::Registry::Manager
+ * instance's fmap as {OpName: new tvm::runtime::Registry()}.
+ */
 /*!
  * \brief Register an API function globally.
  * It simply redirects to TVM_REGISTER_GLOBAL
