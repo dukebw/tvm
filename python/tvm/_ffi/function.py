@@ -296,6 +296,8 @@ def _init_api_prefix(module_name, prefix):
             fname = name[len(prefix)+1:]
             target_module = module
 
+        # NOTE(brendan): A hack so that, e.g., tvm.relay.something doesn't get
+        # added to tvm.api?
         if fname.find(".") != -1:
             continue
         f = get_global_func(name)
