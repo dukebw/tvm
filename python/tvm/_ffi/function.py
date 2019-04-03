@@ -186,6 +186,8 @@ def register_func(func_name, f=None, override=False):
     return register
 
 
+# NOTE(brendan): Returns the PackedFunc stored in the global
+# tvm::runtime::Registry::Manager's fmap[name].
 def get_global_func(name, allow_missing=False):
     """Get a global function by name
 
@@ -214,6 +216,8 @@ def get_global_func(name, allow_missing=False):
 
 
 
+# NOTE(brendan): Returns all the keys in the global
+# tvm::runtime::Registry::Manager's fmap.
 def list_global_func_names():
     """Get list of global functions registered.
 
@@ -258,6 +262,7 @@ def extract_ext_funcs(finit):
     return fdict
 
 
+# TODO(brendan): ?
 def _get_api(f):
     flocal = f
     flocal.is_global = True
@@ -280,6 +285,11 @@ def _init_api(namespace, target_module_name=None):
         _init_api_prefix(target_module_name, namespace)
 
 
+# NOTE(brendan): Iterates through all of the funcs stored in the global
+# registry manager, and adds their PackedFunc as attributes of module_name if
+# their name starts with prefix.
+# Exception: names that start with _ for tvm.api are added to
+# tvm._api_internal.
 def _init_api_prefix(module_name, prefix):
     module = sys.modules[module_name]
 
