@@ -1,3 +1,19 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
 # pylint: disable=import-self, invalid-name, unused-argument, too-many-lines, len-as-condition
 """TF: Tensorflow frontend."""
 from __future__ import absolute_import as _abs
@@ -673,17 +689,20 @@ def _square():
         return _op.multiply(inputs[0], inputs[0])
     return _impl
 
-def _gather_v2():
-    "Tensorflow now support only gatherv2"
+def _gather():
+    "GatherV2, Gather"
     def _impl(inputs, attr, params):
-        axis = params[inputs.pop(2).name_hint].asnumpy()[0]
+
+        axis = 0
+        if len(inputs) > 2:
+            axis = params[inputs.pop(2).name_hint].asnumpy()[0]
         new_input = []
         new_input.append(inputs.pop(0))
         new_input.append(inputs.pop(0))
-        return  AttrCvt(op_name="take",
-                        extras={'axis': tvm.const(axis, 'int32')},
-                        ignores=['Tindices', 'Tparams', 'validate_indices', \
-                                 'Taxis', '_class'])(new_input, attr)
+        return AttrCvt(op_name="take",
+                       extras={'axis': tvm.const(axis, 'int32')},
+                       ignores=['Tindices', 'Tparams', 'validate_indices', \
+                                'Taxis', '_class'])(new_input, attr)
     return _impl
 
 def _infer_out_shapes(inputs, params):
@@ -815,7 +834,6 @@ def _pad(name):
             ignores=['Tpaddings'],)(new_inputs, attr)
     return _impl
 
-
 def _transpose():
     def _impl(inputs, attr, params):
         # If perm is not specified, axes is left empty,
@@ -826,6 +844,11 @@ def _transpose():
         else:
             axes = None
         return _op.transpose(inputs[0], axes=axes)
+    return _impl
+
+def _where():
+    def _impl(inputs, attr, params):
+        return AttrCvt(op_name="where")(inputs, attr)
     return _impl
 
 def _rank():
@@ -1012,8 +1035,10 @@ _convert_map = {
     'DepthwiseConv2dNative'             : _conv('depthwise'),
     'Shape'                             : _shape(),
     'Sigmoid'                           : AttrCvt('sigmoid'),
+    'Select'                            : _where(),
     'Fill'                              : _fill(),
-    'GatherV2'                          : _gather_v2(),
+    'GatherV2'                          : _gather(),
+    'Gather'                            : _gather(),
     'StridedSlice'                      : _stridedSlice(),
     'LRN'                               : _lrn(),
     'Pad'                               : _pad('Pad'),
